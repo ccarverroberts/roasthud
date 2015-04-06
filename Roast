@@ -1,0 +1,281 @@
+#!/usr/bin/python3
+# RaspberryRoast Client
+# © 2015 Christopher C. Roberts (c.carver.roberts@gmail.com)
+# Not for commercial use.
+# Please contact c.carver.roberts@gmail.com for commercial use.
+
+import os, sys, time, queue, threading
+# likely external dependencies
+import socket
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+
+# internal dependencies
+from RoastGraph import RoastGraph
+from RoastProfile import RoastProfile
+
+
+
+
+class RoastWindow(QMainWindow):
+  def __init__(self):
+    super(RoastWindow, self).__init__()
+    self.running = True
+
+    self.setWindowTitle('RaspberryRoast Client')
+
+    self.t = time.time()
+    self.tStart = self.t
+    self.T = 0.
+
+    self.IP = '192.168.1.13'
+    self.IPport = 5850
+    self.connected = False
+    self.disconnect = False # thread signal
+    self.threadIP = None
+
+    self.activeProfile = RoastProfile()
+    self.dataQueue = queue.Queue()
+    self.dataConnection = None
+
+    self.timerUpdate = QTimer()
+    self.timerUpdate.timeout.connect(self.update)
+    self.timerUpdate.start(1000)
+    
+    self.Tgraph = RoastGraph(self)
+    self.Tgraph.boundsX = [0., 900.]
+    self.Tgraph.boundsY = [20., 260.]
+    self.Tgraph.setMinimumWidth(1000.)
+    self.Tgraph.setMinimumHeight(600.)
+    self.Tgraph.Tplots.append(self.activeProfile)
+    self.Tgraph.padding[2] = 10.
+
+    self.dTgraph = RoastGraph(self, )
+    self.dTgraph.boundsX = [0., 900.]
+    self.dTgraph.boundsY = [0., 40.]
+    self.dTgraph.minorTickY = 5.
+    self.dTgraph.majorTickY = 10.
+    self.dTgraph.padding[2] = 5.
+    self.dTgraph.setMinimumWidth(1000.)
+    self.dTgraph.setMinimumHeight(200.)
+    self.dTgraph.dTplots.append(self.activeProfile)
+    self.dTgraph.labelY = 'ΔT (°C/min)'
+
+    self.btnStart = QPushButton("Start")
+    self.btnStart.clicked.connect(self.startRoast)
+    self.btnStop = QPushButton("Stop")
+    self.btnStop.clicked.connect(self.stopRoast)
+    self.btnStop.setEnabled(False)
+    self.btnComment = QPushButton("Comment")
+    self.btnComment.clicked.connect(self.recordComment)
+
+    # menu
+    menubar = self.menuBar()
+    fileMenu = menubar.addMenu('&File')
+    exitAction = QAction(QIcon('exit.png'), '&Exit', self)        
+    exitAction.triggered.connect(self.closeEvent)
+    loadProfileAction = QAction(QIcon(":/icons/open.png"), '&Load Reference Profile', self)        
+    loadProfileAction.triggered.connect(self.loadProfile)
+    fileMenu.addAction(loadProfileAction)
+    fileMenu.addAction(exitAction)
+
+    connMenu = menubar.addMenu('&Connection')
+    setIPAction = QAction('Set &IP Address', self)        
+    setIPAction.triggered.connect(self.setIP)
+    self.startIPAction = QAction('&Connect', self)        
+    self.startIPAction.triggered.connect(self.connectIP)
+    self.stopIPAction = QAction('&Disconnect', self)        
+    self.stopIPAction.triggered.connect(self.disconnectIP)
+    self.stopIPAction.setEnabled(False)
+    connMenu.addAction(setIPAction)
+    connMenu.addAction(self.startIPAction)
+    connMenu.addAction(self.stopIPAction)
+
+    # status
+    self.statusBar().showMessage('Disconnected')
+
+    # toolbar
+    self.startAction = QAction('Start Roast', self)
+    self.startAction.triggered.connect(self.startRoast)
+    self.stopAction = QAction('Stop Roast', self)
+    self.stopAction.triggered.connect(self.stopRoast)
+    self.stopAction.setEnabled(False)
+    self.labelT = QLabel('')
+    self.labeldT = QLabel('')
+    self.labelt = QLabel('')
+    commentAction = QAction('Add Comment', self)
+    commentAction.triggered.connect(self.recordComment)
+    toolbar = self.addToolBar('Yay')
+    toolbar.addAction(self.startIPAction)
+    toolbar.addAction(self.stopIPAction)
+    toolbar.addSeparator()
+    toolbar.addAction(self.startAction)
+    toolbar.addAction(self.stopAction)
+    toolbar.addSeparator()
+    spacer = QWidget() 
+    spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
+    toolbar.addWidget(spacer) 
+    toolbar.addWidget(self.labelT)
+    spacer = QWidget() 
+    spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
+    toolbar.addWidget(spacer) 
+    toolbar.addWidget(self.labeldT)
+    spacer = QWidget() 
+    spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
+    toolbar.addWidget(spacer) 
+    toolbar.addWidget(self.labelt)
+    spacer = QWidget() 
+    spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
+    toolbar.addWidget(spacer) 
+    toolbar.addSeparator()
+    #toolbar.addWidget(self.btnComment) 
+    toolbar.addAction(commentAction)
+
+    # wdget layout
+    self.grid = QGridLayout()
+    self.grid.addWidget(self.Tgraph, 0, 0, 1, 7)
+    self.grid.addWidget(self.dTgraph, 1, 0, 1, 7)
+    #self.grid.addWidget(self.btnStart,   2, 1, 1, 1)
+    #self.grid.addWidget(self.btnStop,    2, 2, 1, 1)
+    #self.grid.addWidget(self.btnComment, 2, 4, 1, 1)
+    self.grid.setRowStretch(0, 1)
+    self.grid.setColumnStretch(0, 1)
+    self.grid.setColumnStretch(3, 1)
+    self.grid.setColumnStretch(6, 1)
+    self.gridWidget = QWidget()
+    self.gridWidget.setLayout(self.grid)
+    self.setCentralWidget(self.gridWidget)
+    self.show()
+
+  def startRoast(self):
+    for i in range(len(self.activeProfile.x)):
+      self.activeProfile.x[i] -= self.t
+    for c in self.activeProfile.comments:
+      c[0] -= self.t
+    self.tStart = time.time()
+    self.startAction.setEnabled(False)
+    self.stopAction.setEnabled(True)
+
+  def stopRoast(self):
+    self.activeProfile.writeProfile('ROAST.csv')
+    self.running = False
+    self.threadIP.join(10)
+
+  def closeEvent(self, ev):
+    self.running = False
+    if self.threadIP:
+      self.threadIP.join(10)
+
+  def recordComment(self):
+    t = self.t
+    T = self.T
+    P, TF = QInputDialog.getText(self, "Record Comment:", "Record Comment:")
+    if TF == True:
+      self.activeProfile.comments.append([t, T, P])
+
+  def loadProfile(self):
+    filename = QFileDialog.getOpenFileName(self, 'Open file')
+    if os.path.exists(filename) and os.path.isfile(filename):
+      self.addProfile(filename)
+
+  def addProfile(self, filename):
+    rp = RoastProfile(filename=filename)
+    self.Tgraph.Tplots.append(rp)
+    self.dTgraph.dTplots.append(rp)
+    X = max(rp.x)
+    X = (int(X / 60) + 1) * 60
+    if X > self.Tgraph.boundsX[1]:
+      self.Tgraph.boundsX[1] = X
+      self.dTgraph.boundsX[1] = X
+
+  def setIP(self):
+    IP, TF = QInputDialog.getText(self, "RaspberryPi IP Address", "RaspberryPi IP Address\nIP_ADDRESS:PORT", text=str('%s:%d' % (self.IP, self.IPport)))
+    if TF:
+      if IP.find(':') > 0:
+        sp = IP.split(':')
+        self.IP = sp[0]
+        self.IPport = int(sp[1])
+      else:
+        self.IP = IP
+
+  def update(self):
+    self.t = time.time() - self.tStart
+    # calculate average T
+    if round(self.t) % 2 == 0:
+      aT = []
+      while not self.dataQueue.empty():
+        aT.append(self.dataQueue.get(0))
+      if len(aT):
+        aT = [x for x in aT if x < 350.]
+        self.T = round(sum(aT)/len(aT), 1)
+        self.activeProfile.append(self.t, self.T)
+    if len(self.activeProfile.dy) > 0:
+      dddT = self.activeProfile.dy[-1]
+    else:
+      dddT = 0.
+    self.labelT.setText('<font size="40"><b>T:</b> %6.2f°C</font>' % self.T)
+    self.labeldT.setText('<font size="40"><b>dT:</b> %6.2f°C/min</font>' % dddT)
+    self.labelt.setText('<font size="40"><b>t:</b> %s</font>' % self.readableTime(self.t))
+    self.Tgraph.update()
+    self.dTgraph.update()
+    if not self.running:
+      rot.quit()
+
+  def ipThread(self):
+    self.dataConnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    self.connected = False
+    try:
+      self.dataConnection.connect((self.IP, self.IPport))
+      connected = True
+    except OSError:
+      print('Cannot connect to %s:%s.' % (self.IP, self.IPport))
+      return
+      
+    while self.running:
+      if self.disconnect: break
+      datab = self.dataConnection.recv(64)
+      data = datab.decode("utf-8")
+      if data != '':
+        try:
+          aT = float(data)
+          self.dataQueue.put(aT)
+        except ValueError:
+          pass
+
+  def connectIP(self):
+    self.statusBar().showMessage('Attempting connection...')
+    self.threadIP = threading.Thread(target=self.ipThread)
+    self.threadIP.start()
+    self.startIPAction.setEnabled(False)
+    self.stopIPAction.setEnabled(True)
+
+  def disconnectIP(self):
+    self.disconnect = True
+    self.dataConnection.close()
+    self.threadIP.join(10)
+    self.disconnect = False
+    self.connected = False
+    self.stopIPAction.setEnabled(False)
+    self.startIPAction.setEnabled(True)
+    self.statusBar().showMessage('Disconnected')
+
+  def readableTime(self, s):
+    tMin = int(s / 60)
+    tSec = int(s % 60)
+    stSec = ''
+    if tSec < 10:
+      stSec = '0%d' % tSec
+    else:
+      stSec = str(tSec)
+    return '%d:%s' % (tMin, stSec)
+
+
+
+
+referenceProfiles = sys.argv[1:]
+
+rot = QApplication(sys.argv)
+win = RoastWindow()
+for fn in referenceProfiles:
+  win.addProfile(fn)
+sys.exit(rot.exec_())
