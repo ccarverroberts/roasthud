@@ -24,6 +24,7 @@ class ViewWindow(QWidget):
     self.Tgraph.boundsY = [40., 260.]
     self.Tgraph.setMinimumWidth(1000.)
     self.Tgraph.setMinimumHeight(600.)
+    self.Tgraph.padding[2] = 20.
 
     self.dTgraph = RoastGraph(self, )
     self.dTgraph.boundsX = [0., 900.]

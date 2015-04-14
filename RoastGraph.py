@@ -1,17 +1,25 @@
 #!/usr/bin/python3
 
-import sys, time, threading, random
+import sys, time
+
+#
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+# scipy dependency
+from scipy import interpolate
+from numpy import arange
 
 from RoastProfile import RoastProfile
+
+
 
 class RoastGraph(QWidget):
   def __init__(self, parent):
     super(RoastGraph, self).__init__(parent)
+    self.dy = False
     # value boundaries
-    self.boundsX = [0., 15.*60.]
-    self.boundsY = [0., 300.]
+    self.boundsX = [0., 900.]
+    self.boundsY = [20., 260.]
     # gridding
     self.minorTickX = 10
     self.minorTickY = 10
@@ -32,17 +40,15 @@ class RoastGraph(QWidget):
     self.fontBig = QFont("Fixed", pointSize=14.)
     self.fontSmall = QFont("Fixed", pointSize=9.)
     # visual preferences
-    self.padding = [80., 20., 60., 60]
+    self.padding = [80., 20., 10., 60]
+    self.setMinimumWidth(1000.)
+    self.setMinimumHeight(200.)
     # labels
     self.labelTitle = ''
     self.labelX = 'Time (min)'
     self.labelY = 'Temperature (°C)'
     # plots
-    self.Tplots = []
-    self.dTplots = []
-    #self.plots.append(RoastProfile(label='Active'))
-    #for fn in sys.argv[2:]:
-    #  self.plots.append(RoastProfile(filename=fn, label=fn))
+    self.plots = []
 
   def screenX(self, x):
     x = float(x)
@@ -65,12 +71,9 @@ class RoastGraph(QWidget):
       painter.fillRect(self.padding[0], self.screenY(self.boundsY[1]), self.width() - self.padding[0] - self.padding[1], self.height() - self.padding[2] - self.padding[3], self.colorBackground)
     self.paintTicks(painter)
     # paint all plots
-    for plot in reversed(self.Tplots):
+    for plot in reversed(self.plots):
       painter.setPen(QPen(plot.qcolor, 2.0))
-      self.paintPlot(painter, plot)
-    for plot in reversed(self.dTplots):
-      painter.setPen(QPen(plot.qcolor, 2.0))
-      self.paintPlot(painter, plot, dy=True)
+      self.paintPlot(painter, plot, dy=self.dy)
     # paint title area
     painter.setFont(self.fontBig)
     painter.setPen(self.colorText)
@@ -132,19 +135,25 @@ class RoastGraph(QWidget):
   def paintPlot(self, painter, plot, dy=False):
     if dy: Ydist = plot.dy
     else:  Ydist = plot.y
+    if len(plot.x) > 10:
+      Ysmooth = interpolate.interp1d(plot.x, Ydist)
+      #Ysmooth = intp(arange(0, max(plot.x)-1))
+    else:
+      Ysmooth = None
     lastP = []
     for i in range(len(plot.x)):
       X = self.screenX(plot.x[i])
-      #Y = self.screenY(Ysmooth[plot.x[i]])
       Y = self.screenY(Ydist[i])
       if plot.x[i] >= self.boundsX[0] and Ydist[i] >= self.boundsY[0] and plot.x[i] <= self.boundsX[1] and Ydist[i] <= self.boundsY[1]:
         if i == 0:
           painter.drawPoint(X, Y)
         else:
           painter.drawLine(lastP[0], lastP[1], X, Y)
+      if i % 10 == 0 and Ysmooth != None:
+        print("!!!", Ydist[i], Ysmooth(plot.x[i]))
       lastP = [X, Y]
     painter.setPen(QPen(plot.qcolor, 1.0))
-    painter.setFont(self.font)
+    painter.setFont(self.fontSmall)
     for comment in plot.comments:
       X = self.screenX(int(comment[0]))
       Y = self.screenY(float(comment[1]))
@@ -168,4 +177,14 @@ class RoastGraph(QWidget):
 
 
 
+
+class VelocityGraph(RoastGraph):
+  def __init__(self, parent):
+    super(VelocityGraph, self).__init__(parent)
+    self.dy = True
+    self.boundsY = [0., 40.]
+    self.minorTickY = 5.
+    self.majorTickY = 10.
+    self.padding[2] = 5.
+    self.labelY = 'ΔT (°C/min)'
 
