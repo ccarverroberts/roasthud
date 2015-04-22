@@ -1,6 +1,6 @@
 
 
-class BaseDriver:
+class Driver:
   def __init__(self, roastClient):
     self.roastClient = roastClient
     self.done = False

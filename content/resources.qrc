@@ -1,0 +1,13 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>devices.png</file>
+    <file>2crack.png</file>
+    <file>crack.png</file>
+    <file>graphs.png</file>
+    <file>comment.png</file>
+    <file>connect.png</file>
+    <file>disconnect.png</file>
+    <file>record.png</file>
+    <file>stop.png</file>
+  </qresource>
+</RCC>

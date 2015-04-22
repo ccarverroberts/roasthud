@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+
+# external
+import sys, os
+from PyQt4.QtGui import QApplication
+# internal
+from cr import *
+
+# main
+if __name__ == "__main__":
+  qapp = QApplication(sys.argv)
+  mainWindow = MainWindow()
+  mainWindow.show()
+  qapp.exec_()
+
