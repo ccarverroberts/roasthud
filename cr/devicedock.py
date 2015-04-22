@@ -3,25 +3,26 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 
-class DeviceDock(QWidget):
+class DeviceDock(QDockWidget):
   def __init__(self, parent=None):
-    QWidget.__init__(self, parent)
-    vlayout = QVBoxLayout()
-    self.view = QListView(self)
-    self.model = QStandardItemModel(self.view)
-    self.view.setModel(self.model)
-    vlayout.addWidget(self.view)
-    self.setLayout(vlayout)
-    # signals
-    self.driversPath = '%s/drivers/' % os.path.dirname(os.path.realpath(__file__))
+    QDockWidget.__init__(self, parent)
 
+  def setup(self):
+    # setup widgets
+    self.model = QStandardItemModel(self.listDevices)
+    self.listDevices.setModel(self.model)
+    self.pathDrivers = '%s/drivers/' % os.path.dirname(os.path.realpath(__file__))
+    # signals
+    self.visibilityChanged.connect(self.visibilityToggled)
   
   def visibilityToggled(self, visible):
-    if visible:
-      self.model.clear()
-      for fn in os.listdir(self.driversPath):
-        if fn.startswith('.') or fn.startswith('_'): continue
-        item = QStandardItem()
-        item.setText(fn[:-3])
-        item.setEditable(False)
-        self.model.appendRow(item)
+    print('devices visibility', visible)
+    self.model.clear()
+    for fn in os.listdir(self.pathDrivers):
+      if fn.startswith('.') or fn.startswith('_'): continue
+      item = QStandardItem()
+      item.setText(fn[:-3])
+      item.setEditable(False)
+      item.setCheckable(True)
+      item.setCheckState(False)
+      self.model.appendRow(item)
