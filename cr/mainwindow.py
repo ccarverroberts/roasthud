@@ -18,4 +18,19 @@ class MainWindow(QMainWindow, windowClass):
   def __init__(self):
     QMainWindow.__init__(self)
     self.setupUi(self)
+    # setup
+    self.dockDevices.hide()
+    self.dockProfiles.hide()
+    # connect signals
+    self.buttonDevices.clicked.connect(self.toggleDevices)
+    self.buttonProfiles.clicked.connect(self.toggleProfiles)
+    #self.dockDevices.visibilityChanged.connect(self.dockDevicesContents.visibilityToggled)
+    #self.dockProfiles.visibilityChanged.connect(self.dockProfilesContents.visibilityToggled)
 
+  def toggleDevices(self):
+    if self.dockDevices.isVisible(): self.dockDevices.hide()
+    else: self.dockDevices.show()
+
+  def toggleProfiles(self):
+    if self.dockProfiles.isVisible(): self.dockProfiles.hide()
+    else: self.dockProfiles.show()
