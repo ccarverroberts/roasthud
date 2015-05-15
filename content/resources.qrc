@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="icons">
+    <file>setup.png</file>
     <file>devices.png</file>
     <file>2crack.png</file>
     <file>crack.png</file>
