@@ -14,8 +14,8 @@ class DeviceDock(QDockWidget):
     self.listDevices.setModel(self.model)
     self.pathDrivers = '%s/drivers/' % os.path.dirname(os.path.realpath(__file__))
     # signals
-    self.visibilityChanged.connect(self.visibilityToggled)
     self.model.itemChanged.connect(self.itemChecked)
+    self.visibilityChanged.connect(self.visibilityToggled)
   
   def visibilityToggled(self, visible):
     self.model.clear()

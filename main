@@ -10,7 +10,8 @@ from cr import *
 if __name__ == "__main__":
   sys.path.append('%s/cr/drivers/' % os.path.dirname(os.path.realpath(__file__)))
   qapp = QApplication(sys.argv)
-  mainWindow = MainWindow()
+  settings = Settings(qapp)
+  mainWindow = MainWindow(settings)
   mainWindow.show()
   qapp.exec_()
 

@@ -1,11 +1,13 @@
 from cr.driver import Driver as BaseDriver
-import socket
+from cr.profile import Profile, RoastProfile
 from PyQt4.QtGui import QDialog
+import socket
 
 
 class RPiIP(BaseDriver):
   def __init__(self, roastClient, configClass):
     BaseDriver.__init__(self, roastClient, configClass)
+    self.roastClient = roastClient
     self.IPaddress = '0.0.0.0'
     self.IPport = 5850
     self.configForm = QDialog()
@@ -15,6 +17,11 @@ class RPiIP(BaseDriver):
     self.configUI.buttonOK.clicked.connect(self.updateConfig)
     self.configUI.buttonCancel.clicked.connect(lambda e: self.configForm.hide())
     self.configForm.show()
+    # register 1 profile (only 1 temperature sensor supported for now)
+    p = self.roastClient.roastProfile.createProfile()
+    self.profiles.append(p)
+    self.roastClient.dockProfiles.visibilityToggled(True)
+    
 
   def connect(self):
     print('Attempting connection to', self.IPaddress, ':', self.IPport)
@@ -23,14 +30,18 @@ class RPiIP(BaseDriver):
     try:
       self.sock.connect((self.IPaddress, int(self.IPport)))
       self.loop()
+      self.connected = True
     except (OSError, socket.timeout, socket.error) as e:
       print('Cannot connect to %s:%s. %s.' % (self.IPaddress, self.IPport, e))
-      return
+      return False
+    return True
 
   def disconnect(self):
-    self.sock.shutdown(socket.SHUT_RD)
-    self.sock.close()
-    self.sock = None
+    if self.connected:
+      self.sock.shutdown(socket.SHUT_RD)
+      self.sock.close()
+      self.sock = None
+      self.connected = False
 
   def main(self):
     datab = self.sock.recv(64)
@@ -38,7 +49,8 @@ class RPiIP(BaseDriver):
     if data != '':
       try:
         aT = float(data)
-        print(aT)
+        self.profiles[0].setT(self.roastClient.t, aT)
+        self.roastClient.graphT.update()
       except ValueError:
         pass
 

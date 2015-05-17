@@ -1,4 +1,5 @@
 import threading
+from cr.profile import Profile
 
 
 class Driver:
@@ -6,10 +7,13 @@ class Driver:
     self.roastClient = roastClient
     self.thread = None
     self.done = False
+    self.profiles = []
+    self.connected = False
 
   def stop(self):
     self.done = True
-    self.thread.join()
+    if self.thread != None:
+      self.thread.join()
     self.disconnect()
     self.thread = None
 
@@ -25,7 +29,7 @@ class Driver:
       self.main()
 
   def connect(self):
-    pass
+    return False
 
   def disconnect(self):
     pass
