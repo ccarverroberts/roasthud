@@ -51,6 +51,7 @@ class RPiIP(BaseDriver):
         aT = float(data)
         self.profiles[0].setT(self.roastClient.t, aT)
         self.roastClient.graphT.update()
+        self.roastClient.graphDT.update()
       except ValueError:
         pass
 

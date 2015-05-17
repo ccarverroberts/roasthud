@@ -11,15 +11,6 @@ class Profile:
     self.thickness = 2.0
     self.color = QColor(0, 0, 0)
     self.pen = QPen(self.color, self.thickness)
-    if filename:
-      for line in open(filename, 'r'):
-        x, y = line.split(',')
-        if x.startswith('#'):
-          print(x, y)
-        else:
-          self.time.append(int(x))
-          self.temp.append(float(y))
-      self.calculateDelta()
 
   def setT(self, t, T):
     self.time.append(t)
@@ -54,8 +45,28 @@ class Profile:
 
 
 class RoastProfile:
-  def __init__(self):
+  def __init__(self, filename=None):
     self.profiles = []
+    self.comments = []
+    if filename:
+      Nplots = -1
+      for line in open(filename, 'r'):
+        sp = line.split(',')
+        x = sp[0]
+        if x.startswith('#'):
+          x = x[1:]
+          self.comments.append([x, ','.join([s.strip() for s in sp[1:]])])
+        else:
+          if Nplots < 0:
+            Nplots = len(sp) - 1
+            for i in range(Nplots): self.createProfile()
+          for i in range(Nplots): 
+            y = sp[i+1]
+            self.profiles[i].time.append(int(x))
+            self.profiles[i].temp.append(float(y))
+      for p in self.profiles:
+        p.calculateDelta()
+      
 
   def createProfile(self):
     p = Profile(label=str('T%d' % (len(self.profiles)+1)))

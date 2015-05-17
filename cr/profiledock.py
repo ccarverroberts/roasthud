@@ -36,6 +36,8 @@ class ProfileDock(QDockWidget):
       p.setThickness(t)
     except IndexError:
       pass
+    self.roastClient.graphT.update()
+    self.roastClient.graphDT.update()
 
   def setPlotColor(self):
     clr = QColorDialog.getColor()
@@ -45,6 +47,8 @@ class ProfileDock(QDockWidget):
       p.setColor(clr)
     except IndexError:
       pass
+    self.roastClient.graphT.update()
+    self.roastClient.graphDT.update()
 
   def changeSelection(self, item):
     i = item.row()

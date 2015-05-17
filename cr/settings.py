@@ -10,12 +10,22 @@ class Bunch(dict):
 
 
 class Settings:
+  instance = None
+  @classmethod
+  def current(cls):
+    return cls.instance
+
   def __init__(self, qapp):
+    Settings.instance = self
     self.axes = Bunch()
-    self.axes.colorFont = QColor(0, 0, 0)
-    self.axes.penTick = QPen(QColor(5, 5, 5), 2.0)
-    self.axes.tickSize = 10.
-    self.axes.size = 40.
+    self.axes.fontLabel = QFont("Fixed")
+    self.axes.fontLabel.setPixelSize(18)
+    self.axes.colorLabel = QColor(50, 50, 50)
+    self.axes.fontTick = QFont("Fixed")
+    self.axes.fontTick.setPixelSize(13)
+    self.axes.colorTick = QColor(105, 105, 105)
+    self.axes.penTick = QPen(self.axes.colorTick, 1.5)
+    self.axes.tickSize = 10
     self.axes.rangeX = [0, 15.*60., 60, 30]
     self.axes.rangeY = [0, 250., 20., 10.]
     self.axes.rangeDY = [0, 50., 10., 5.]
@@ -26,7 +36,8 @@ class Settings:
     self.grid.colorMinor = QColor(220, 220, 220)
     self.plots = Bunch()
     self.plots.colorBackground = QColor(240, 240, 240)
-    
+    self.plots.fontComment = QFont("Fixed")
+    self.plots.fontComment.setPixelSize(15)
 
   def load(self):
     sdir = self.settingsLocation('roasthud')

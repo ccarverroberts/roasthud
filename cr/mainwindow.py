@@ -5,7 +5,9 @@ from PyQt4.QtGui import *
 from PyQt4 import uic
 from cr.profile import Profile, RoastProfile
 
+
 windowClass = uic.loadUiType('%s/GUI/MainWindow.ui' % os.path.dirname(os.path.realpath(__file__)))[0]
+
 
 # Used for spacing GUI elements in the toolbar
 class Spacer(QWidget):
@@ -20,6 +22,7 @@ class MainWindow(QMainWindow, windowClass):
     QMainWindow.__init__(self)
     self.settings = settings
     self.devices = []
+    self.reference = None
     self.roastProfile = RoastProfile()
     self.setupUi(self)
     # setup
@@ -27,6 +30,8 @@ class MainWindow(QMainWindow, windowClass):
     self.dockDevices.setup(self)
     self.dockProfiles.listProfiles = self.listProfiles;
     self.dockProfiles.setup(self)
+    self.dockReferences.listReferences = self.listReferences;
+    self.dockReferences.setup(self)
     self.graphT.setup(self)
     self.graphDT.setup(self)
     # connect signals
@@ -92,12 +97,16 @@ class MainWindow(QMainWindow, windowClass):
       self.roastProfile.comments.append([self.t, '1CS'])
     else:
       self.roastProfile.comments.append([self.t, '1CE'])
+    self.graphT.update()
+    self.graphDT.update()
 
   def recordComment(self):
     t = self.t
     text, ok = QInputDialog.getText(self, 'Input Dialog', 'Enter comment:')
     if ok:
       self.roastProfile.comments.append([t, text])
+    self.graphT.update()
+    self.graphDT.update()
 
   def secondsToClock(self, t):
     mnt = int(t / 60)
